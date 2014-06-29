@@ -167,4 +167,24 @@ public class WindFarmGencoPriceModel {
       imbP.setPrices(clearingPrice, cup, cdn, regStat);
     }  
   } //updatePrices
-}
+  
+  boolean getPrices(Timeslot timeSlot, Double mcp, Double pimbPrice, Double nimbPrice) {
+    
+    //get hour of day
+    int hourOfDay = timeSlot.getStartInstant().toDateTime().getHourOfDay();
+    
+    if (!this.mapHourToImbPrice.containsKey(hourOfDay)) {
+      return false;
+    }
+    
+    ImbalancePrice imbPrice = this.mapHourToImbPrice.get(hourOfDay);
+    
+    mcp = imbPrice.getClearingPrice();
+    pimbPrice = imbPrice.getImbalancePrice(100.0);
+    nimbPrice = imbPrice.getImbalancePrice(-100.0);
+    
+    return true;
+    
+  }
+  
+} //class WindFarmGencoPriceModel

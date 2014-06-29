@@ -59,8 +59,9 @@ public class WindfarmGenco extends Broker
 
   protected BrokerProxy brokerProxyService;
 
-  private WindForecast windForecast = new WindForecast();
+  private WindForecast windForecast = null;
   private ForecastScenarios forecastScenarios = null;
+  private WindFarmGencoPriceModel imbalancePriceModel = null;
 
   // configured parameters
   @ConfigurableValue(valueType = "String", description = "Location of weather data to be reported")
@@ -89,7 +90,10 @@ public class WindfarmGenco extends Broker
   public WindfarmGenco (String username)
   {
     super(username, true, true);
-    efficiencyCurve = new WindFarmEfficiencyCurve();
+    this.efficiencyCurve = new WindFarmEfficiencyCurve();
+    this.windForecast = new WindForecast();
+    this.imbalancePriceModel = new WindFarmGencoPriceModel();
+    
   }
 
   /**
@@ -191,8 +195,16 @@ public class WindfarmGenco extends Broker
 
     // 4. generate power output scenarios
     forecastScenarios.calcPowerOutputScenarios();
+    
+    // 5. update imbalance prices for last closed timeslot
+    //TODO: get these prices from the powertac server
+    double marketClearingPrice = 10 + 40 * Math.random(); //this must be changed
+    double totalNetImabalance = (0.5 - Math.random()) * 1000;
+    Timeslot prevTimeSlot = new Timeslot(0,now, openSlots.get(0));//??????
+    this.imbalancePriceModel.updatePrices(prevTimeSlot, totalNetImabalance, marketClearingPrice);
+    
 
-    // 5. run optimization to determine bid quantity for all timeslots
+    // 6. run optimization to determine bid quantity for all timeslots
     List<Double> askQuantities = calcAskQuantities(openSlots);
 
     // 6. generate orders - assume that we have 24 timeslots open
@@ -212,7 +224,7 @@ public class WindfarmGenco extends Broker
     List<Scenario> wpScenarios =
       forecastScenarios.getWindPowerOutputScenarios();
     WindFarmOfferCalculator offerCalc =
-      new WindFarmOfferCalculator(maxCap, wpScenarios);
+      new WindFarmOfferCalculator(maxCap, wpScenarios, this.imbalancePriceModel);
     List<Double> optimalOffers = offerCalc.getOptimalOfferCapacities(openSlots);
     List<Double> askQuantities = new ArrayList<Double>();
     for (int i = 0; i < openSlots.size(); i++) 
