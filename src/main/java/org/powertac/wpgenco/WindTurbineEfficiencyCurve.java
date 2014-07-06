@@ -32,7 +32,7 @@ import org.powertac.common.state.Domain;
  */
 @Domain
 @ConfigurableInstance
-public class WindFarmEfficiencyCurve
+public class WindTurbineEfficiencyCurve
 {
 
   private static class WindSpeedband
@@ -73,7 +73,7 @@ public class WindFarmEfficiencyCurve
   /**
    * Constructor
    */
-  public WindFarmEfficiencyCurve ()
+  public WindTurbineEfficiencyCurve ()
   {
     initialize();
   } // WindFarmEfficiencyCurve()

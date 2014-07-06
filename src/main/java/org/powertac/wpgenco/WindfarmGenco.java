@@ -49,9 +49,6 @@ public class WindfarmGenco extends Broker
 
   private boolean inOperation = true;
 
-  /** efficiency curve */
-  private WindFarmEfficiencyCurve efficiencyCurve = null;
-
   /** True if this is a renewable source */
   @SuppressWarnings("unused")
   private boolean renewable = true;
@@ -68,18 +65,11 @@ public class WindfarmGenco extends Broker
   private String location = "minneapolis";
   @ConfigurableValue(valueType = "Integer", description = "Number of turbines in the wind farm")
   private int numberOfTurbines = 100;
-  @ConfigurableValue(valueType = "Double", description = "Capacity of each turbine in MW")
-  private double turbineCapacity = 1.5;
+
   @ConfigurableValue(valueType = "Double", description = "ask price for wind farm")
   private double askPrice = 1.0;
-  @ConfigurableValue(valueType = "Double", description = "minimum wind speed at which the windfarm produces power")
-  private double cutInSpeed = 4.0; // meters/sec
-  @ConfigurableValue(valueType = "Double", description = "maximum wind speed at which the windfarm produces power")
-  private double cutOutSpeed = 25.0; // meters/sec
-  @ConfigurableValue(valueType = "Double", description = "minimum wind speed at which the windfarm produces power at its high limit")
-  private double maxPowerOutputspeed = 14.0; // meters/sec
-  @ConfigurableValue(valueType = "Double", description = "sweep area of turbine in m^2")
-  private double sweepAreaOfTurbine = 2391.2; // m^2
+
+  private WindTurbine windTurbine = null;
 
   /**
    * Constructor to create instance of wind park genco (or windfarm genco)
@@ -90,10 +80,10 @@ public class WindfarmGenco extends Broker
   public WindfarmGenco (String username)
   {
     super(username, true, true);
-    this.efficiencyCurve = new WindFarmEfficiencyCurve();
+    
     this.windForecast = new WindForecast();
     this.imbalancePriceModel = new WindFarmGencoPriceModel();
-    
+    this.windTurbine = new WindTurbine();
   }
 
   /**
@@ -127,20 +117,13 @@ public class WindfarmGenco extends Broker
     return inOperation;
   }
 
-  /**
-   * Nominal or mean capacity of plant.
-   */
-  public double getNominalCapacity ()
-  {
-    return turbineCapacity * numberOfTurbines;
-  }
 
   /**
    * Current capacity, varies by a mean-reverting random walk.
    */
   double getCurrentCapacity ()
   {
-    return this.turbineCapacity * this.numberOfTurbines;
+    return this.windTurbine.getNominalCapacity() * this.numberOfTurbines;
   }
 
   /**
@@ -220,7 +203,7 @@ public class WindfarmGenco extends Broker
   private List<Double> calcAskQuantities (List<Timeslot> openSlots)
   {
     // instantiate a calculator
-    double maxCap = this.getNominalCapacity();
+    double maxCap = this.windTurbine.getNominalCapacity() * this.numberOfTurbines;
     List<Scenario> wpScenarios =
       forecastScenarios.getWindPowerOutputScenarios();
     WindFarmOfferCalculator offerCalc =
@@ -243,7 +226,6 @@ public class WindfarmGenco extends Broker
     return askQuantities;
   }
 
-  @SuppressWarnings("unused")
   @StateChange
   private void setInOperation (boolean op)
   {
@@ -261,24 +243,10 @@ public class WindfarmGenco extends Broker
    */
   public double getEstimatedPowerOutput (double windSpeed, double airDensity)
   {
-    if (windSpeed < cutInSpeed) {
-      return 0;
-    }
-    else if ((windSpeed >= maxPowerOutputspeed) && (windSpeed < cutOutSpeed)) {
-      return (this.turbineCapacity * this.numberOfTurbines);
-    }
-    else if (windSpeed > this.cutOutSpeed) {
-      return 0;
-    }
-    else {
-      double powerOutput = 0;
-      double efficiency = efficiencyCurve.getEfficiency(windSpeed);
-      powerOutput =
-        0.5 * efficiency * sweepAreaOfTurbine * airDensity
-                * Math.pow(windSpeed, 3) * numberOfTurbines;
-      return powerOutput / 1000000; // convert Watts to MW
-    }
+    return this.windTurbine.getEstimatedPowerOutput(windSpeed, airDensity) *
+            this.numberOfTurbines;
   }
+
 
   /**
    * get air density from air pressure in Pa and temperature in centigrade

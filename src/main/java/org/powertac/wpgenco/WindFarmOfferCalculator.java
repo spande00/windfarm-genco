@@ -93,9 +93,10 @@ public class WindFarmOfferCalculator
     // at this point we know we have the prices
     double revenue = 0; // we need to maximize this
     double offerCap = 0;
+    double capIncrement = maxCapacity * stepSize;
     if (pricesAvailable) {
       for (double currCap = 0; currCap <= maxCapacity; currCap +=
-        currCap * stepSize) {
+              capIncrement) {
         double currRev = getRevenue(currCap, cmcp, pimbPrice, nimbPrice, ts);
         if (currRev > revenue) {
           revenue = currRev;
